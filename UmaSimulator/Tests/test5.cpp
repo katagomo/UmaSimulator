@@ -9,17 +9,27 @@
 #include "../NeuralNet/Evaluator.h"
 #include "../Search/Search.h"
 #include "../External/termcolor.hpp"
+
+#include "../GameDatabase/GameDatabase.h"
+#include "../GameDatabase/GameConfig.h"
+
 using namespace std;
 
-const bool handWrittenEvaluationTest = false;
-const int threadNum = 20;
+const bool handWrittenEvaluationTest = true;
+const int threadNum = 16;
 const int threadNumInner = 1;
 const double radicalFactor = 5;//激进度
-const int searchN = handWrittenEvaluationTest ? 1 : 1024;
+const int searchN = handWrittenEvaluationTest ? 1 : 3072;
 
 
-const int totalGames = handWrittenEvaluationTest ? 60000 : 10000000;
+const int totalGames = handWrittenEvaluationTest ? 1200000 : 10000000;
 const int gamesEveryThread = totalGames / threadNum;
+
+
+
+int umaId = 101101;//草上飞
+int cards[6] = { 301374,301344,300104,300194,300114,301074 };//神团，高峰，美妙，乌拉拉，风神，司机
+//手写逻辑应当为27699±5（1000000局）
 
 
 std::atomic<double> totalScore = 0;
@@ -27,7 +37,7 @@ std::atomic<double> totalScoreSqr = 0;
 
 std::atomic<int> bestScore = 0;
 std::atomic<int> n = 0;
-
+vector<atomic<int>> segmentStats= vector<atomic<int>>(500);//100分一段，500段
 
 
 void worker()
@@ -35,11 +45,18 @@ void worker()
   random_device rd;
   auto rand = mt19937_64(rd());
 
-  int umaId = 4;//我自己的号
-  int cards[6] = { 1,2,3,4,5,6 };
+/*
+  for (int i = 0; i < 6; ++i) {
 
-  //int umaId = 3;//二之宫
+      GameDatabase::AllCards[cards[i]].cardValueInit(4);
+
+  }
+*/
+  //int umaId = 5;//二之宫
   //int cards[6] = { 1,2,14,10,11,15 };
+  // 
+  //int umaId = 4;
+  //int cards[6] = { 1,2,14,4,5,31 };
 
   int zhongmaBlue[5] = { 18,0,0,0,0 };
   int zhongmaBonus[6] = { 20,0,40,0,20,200 };
@@ -72,6 +89,14 @@ void worker()
     n += 1;
     totalScore += score;
     totalScoreSqr += score * score;
+    for (int i = 0; i < 500; i++)
+    {
+      int refScore = i * 100;
+      if (score >= refScore)
+      {
+        segmentStats[i] += 1;
+      }
+    }
 
     int bestScoreOld = bestScore;
     while (score > bestScoreOld && !bestScore.compare_exchange_weak(bestScoreOld, score)) {
@@ -86,6 +111,14 @@ void worker()
     {
       game.printFinalStats();
       cout << n << "局，搜索量=" << searchN << "，平均分" << totalScore / n << "，标准差" << sqrt(totalScoreSqr / n - totalScore * totalScore / n / n) << "，最高分" << bestScore << endl;
+      cout
+        << "29500分概率=" << float(segmentStats[295]) / n << ","
+        << "30000分概率=" << float(segmentStats[300]) / n << ","
+        << "30500分概率=" << float(segmentStats[305]) / n << ","
+        << "31000分概率=" << float(segmentStats[310]) / n << ","
+        << "31500分概率=" << float(segmentStats[315]) / n << ","
+        << "32000分概率=" << float(segmentStats[320]) / n << ","
+        << "32500分概率=" << float(segmentStats[325]) / n << endl;
     }
   }
 
@@ -93,6 +126,16 @@ void worker()
 
 void main_test5()
 {
+
+
+    // 检查工作目录
+    GameDatabase::loadUmas("../db/uma");
+    GameDatabase::loadCards("../db/card");
+
+
+  for (int i = 0; i < 200; i++)segmentStats[i] = 0;
+
+
   std::vector<std::thread> threads;
   for (int i = 0; i < threadNum; ++i) {
     threads.push_back(std::thread(worker));

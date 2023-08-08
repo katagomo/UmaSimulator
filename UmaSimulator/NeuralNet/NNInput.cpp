@@ -206,12 +206,12 @@ void Game::getNNInputV1(float* buf, float targetScore, int mode) const
   }
 
   //513~599 马娘id
-  static_assert(GameDatabase::ALL_UMA_NUM <= 599 - 513, "超过v1版神经网络支持马娘数上限");
+  //static_assert(GameDatabase::ALL_UMA_NUM <= 599 - 513, "超过v1版神经网络支持马娘数上限");
   assert(umaId >= 0 && umaId + 513 <= 599);
   buf[513 + umaId] = 1.0;
 
   //600~899 支援卡id，若i号位的支援卡为j，则buf[600+j*6+i]=1
-  assert(GameDatabase::ALL_SUPPORTCARD_NUM <= 50, "超过v1版神经网络支持支援卡数上限");
+  //assert(GameDatabase::ALL_SUPPORTCARD_NUM <= 50, "超过v1版神经网络支持支援卡数上限");
   for (int i = 0; i < 6; i++)
     buf[600 + cardId[i] * 6 + i] = 1.0;
   

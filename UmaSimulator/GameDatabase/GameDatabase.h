@@ -1,21 +1,19 @@
 #pragma once
 #include <string>
-#include <map>
+#include <unordered_map>
 #include "UmaData.h"
-#include "../SupportCard/SupportCard.h"
-
+#include "CardData.h"
+#include "SkillData.h"
 
 class GameDatabase
 {
 public:
-  static const int ALL_SUPPORTCARD_NUM = 51;
-  static const std::string AllSupportCardNames[ALL_SUPPORTCARD_NUM];
-  static const std::map<int, int> AllSupportCardGameIdToSimulatorId;
-  static SupportCard AllSupportCards[ALL_SUPPORTCARD_NUM];
+  static std::unordered_map<int, UmaData> AllUmas;
+  static std::unordered_map<int, SupportCard> AllCards;
+  static std::unordered_map<int, SupportCard> DBCards;
 
-
-  static const int ALL_UMA_NUM = 20;
-  static const std::string AllUmaNames[ALL_UMA_NUM];
-  static const std::map<int, int> AllUmaGameIdToSimulatorId;
-  static const UmaData AllUmas[ALL_UMA_NUM];
+  static void loadUmas(const std::string& dir);
+  static void loadCards(const std::string& dir);
+  static void loadDBCards(const std::string& pathname);
+  
 };

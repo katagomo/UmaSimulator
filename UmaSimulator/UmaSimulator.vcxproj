@@ -101,7 +101,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
+      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -110,6 +110,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <Profile>true</Profile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -117,8 +118,8 @@
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CONSOLE;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
@@ -131,6 +132,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="External\utils.cpp" />
+    <ClCompile Include="GameDatabase\GameConfig.cpp" />
     <ClCompile Include="GameDatabase\GameConstants.cpp" />
     <ClCompile Include="GameDatabase\KnownSupportCards.cpp" />
     <ClCompile Include="GameDatabase\KnownUmas.cpp" />
@@ -151,13 +154,19 @@
     <ClCompile Include="Tests\test4.cpp" />
     <ClCompile Include="Tests\test5.cpp" />
     <ClCompile Include="Tests\test6.cpp" />
+    <ClCompile Include="Tests\test7.cpp" />
+    <ClCompile Include="Tests\test_json.cpp" />
     <ClCompile Include="UmaSimulator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="External\rang.hpp" />
     <ClInclude Include="External\termcolor.hpp" />
+    <ClInclude Include="External\utils.h" />
+    <ClInclude Include="GameDatabase\CardData.h" />
+    <ClInclude Include="GameDatabase\GameConfig.h" />
     <ClInclude Include="GameDatabase\GameConstants.h" />
     <ClInclude Include="GameDatabase\GameDatabase.h" />
+    <ClInclude Include="GameDatabase\SkillData.h" />
     <ClInclude Include="GameDatabase\UmaData.h" />
     <ClInclude Include="Game\Game.h" />
     <ClInclude Include="MainCommands\MainCommands.h" />

@@ -3,18 +3,10 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
-
-
 UmaSimulator/packets
-
-
-
-
-
-
-
-
-
+packets
+__pycache__
+master.mdb
 
 # User-specific files
 *.rsuser

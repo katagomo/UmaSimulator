@@ -38,10 +38,10 @@ void main_playerPlay()
 
 
     cout << termcolor::bright_blue << "------------------------------------------------------------------------------------------------" << termcolor::reset << endl;
-    cout << termcolor::green << "你养的马是：" << GameDatabase::AllUmaNames[umaId] << termcolor::reset << endl;
+    cout << termcolor::green << "你养的马是：" << GameDatabase::AllUmas[umaId].name << termcolor::reset << endl;
     cout << termcolor::green << "你的配卡是：";
     for (int i = 0; i < 6; i++)
-      cout << GameDatabase::AllSupportCardNames[cards[i]] << ",";
+      cout << GameDatabase::AllCards[cards[i]].cardName << ",";
     cout << termcolor::reset << endl;
     {
       cout << termcolor::bright_cyan << "按Enter键开始游戏" << termcolor::reset << endl; 
@@ -211,7 +211,7 @@ void main_playerPlay()
             if (s != "remake")
               continue;
             isRemake = true;
-            cout << termcolor::red << "你把" << termcolor::green << GameDatabase::AllUmaNames[umaId] << termcolor::red << "杀掉了" << termcolor::reset << endl;
+            cout << termcolor::red << "你把" << termcolor::green << GameDatabase::AllUmas[umaId].name << termcolor::red << "杀掉了" << termcolor::reset << endl;
             break;
           }
           else if (s == "sigmoid")//重置卡组分配
@@ -267,7 +267,9 @@ void main_playerPlay()
           }
 
 
-          assert(GameDatabase::AllSupportCards[game.cardId[0]].cardType == 5 && "神团卡不在第一个位置");
+          assert(game.cardData[0]->cardType == 5 && "神团卡不在第一个位置");
+
+
           if (chosenTrain >= 0 && chosenTrain < 5 && game.cardDistribution[chosenTrain][0])//神团卡在选择的训练
           {
             if (chosenSpiritColor == -1)

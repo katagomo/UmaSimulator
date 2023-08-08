@@ -11,9 +11,13 @@ void Game::newGame(mt19937_64& rand, bool enablePlayerPrint, int newUmaId, int n
 {
   playerPrint = enablePlayerPrint;
   umaId = newUmaId;
+  umaData = &GameDatabase::AllUmas[umaId];
   for (int i = 0; i < 6; i++)
-    cardId[i] = newCards[i];
-  assert(GameDatabase::AllSupportCards[cardId[0]].cardType == 5 && "神团卡不在第一个位置");
+  {
+      cardId[i] = newCards[i];
+      cardData[i] = &GameDatabase::AllCards[newCards[i]];
+  }
+  assert(cardData[0]->cardType == 5 && "神团卡不在第一个位置");
   for (int i = 0; i < 5; i++)
     zhongMaBlueCount[i] = newZhongMaBlueCount[i];
   for (int i = 0; i < 6; i++)
@@ -38,12 +42,13 @@ void Game::newGame(mt19937_64& rand, bool enablePlayerPrint, int newUmaId, int n
 
 
   for (int i = 0; i < 5; i++)
-    fiveStatus[i] = GameDatabase::AllUmas[umaId].fiveStatusInitial[i]; //赛马娘初始值
+    fiveStatus[i] = umaData->fiveStatusInitial[i]; //赛马娘初始值
+    //fiveStatus[i] = GameDatabase::AllUmas[umaId].fiveStatusInitial[i]; //赛马娘初始值
   for (int i = 0; i < 6; i++)//支援卡初始加成
   {
     for (int j = 0; j < 5; j++)
-      addStatus(j, GameDatabase::AllSupportCards[cardId[i]].initialBonus[j]);
-    skillPt += GameDatabase::AllSupportCards[cardId[i]].initialBonus[5];
+      addStatus(j, cardData[i]->initialBonus[j]);
+    skillPt += cardData[i]->initialBonus[5];
   }
   for (int i = 0; i < 5; i++)
     addStatus(i, zhongMaBlueCount[i] * 7); //种马
@@ -51,7 +56,7 @@ void Game::newGame(mt19937_64& rand, bool enablePlayerPrint, int newUmaId, int n
 
   motivation = 3;
   for (int i = 0; i < 6; i++)
-    cardJiBan[i] = GameDatabase::AllSupportCards[cardId[i]].initialJiBan;
+    cardJiBan[i] = cardData[i]->initialJiBan;
   cardJiBan[6] = 0; 
   cardJiBan[7] = 0;
   for (int i = 0; i < 5; i++)
@@ -91,8 +96,8 @@ void Game::initRandomGenerators()
     std::vector<int> probs = { 100,100,100,100,100,50 }; //基础概率，速耐力根智鸽
     if (i < 6)
     {
-      int cardType = GameDatabase::AllSupportCards[cardId[i]].cardType;
-      int deYiLv = GameDatabase::AllSupportCards[cardId[i]].deYiLv;
+      int cardType = cardData[i]->cardType;
+      int deYiLv = cardData[i]->deYiLv;
       if (cardType >= 0 && cardType < 5)//速耐力根智卡
         probs[cardType] += deYiLv;
       else //友人卡，鸽的概率较高
@@ -126,11 +131,11 @@ void Game::randomDistributeCards(std::mt19937_64& rand)
   {
     if (turn < 2 && i == 0)//前两回合神团不来
     {
-      assert(GameDatabase::AllSupportCards[cardId[0]].cardType == 5 && "神团卡不在第一个位置");
+      assert(cardData[0]->cardType == 5 && "神团卡不在第一个位置");
       continue;
     }
 
-    int cardType = i < 6 ? GameDatabase::AllSupportCards[cardId[i]].cardType : 6;
+    int cardType = i < 6 ? cardData[i]->cardType : 6;
 
     int whichTrain = cardDistributionRandom[i](rand);//在哪个训练
     if (whichTrain < 5)//没鸽
@@ -139,7 +144,7 @@ void Game::randomDistributeCards(std::mt19937_64& rand)
     //是否有hint
     if (i < 6 && cardType >= 0 && cardType < 5)//速耐力根智卡
     {
-      double hintProb = 0.06 * blueVenusHintBonus * (1 + 0.01 * GameDatabase::AllSupportCards[cardId[i]].hintProbIncrease);
+      double hintProb = 0.06 * blueVenusHintBonus * (1 + 0.01 * cardData[i]->hintProbIncrease);
       bernoulli_distribution d(hintProb);
       cardHint[i] = d(rand);
     }
@@ -172,7 +177,7 @@ void Game::randomDistributeCards(std::mt19937_64& rand)
           {
             if (cardDistribution[i][card])//这个卡在这个训练
             {
-              isShining |= GameDatabase::AllSupportCards[cardId[card]].getCardEffect(*this, i, cardJiBan[card]).youQing > 0;
+              isShining |= cardData[card]->getCardEffect(*this, i, cardJiBan[card], cardData[card]->effectFactor).youQing > 0;
             }
           }
           if (isShining)
@@ -191,7 +196,26 @@ void Game::randomDistributeCards(std::mt19937_64& rand)
     }
 
   }
+
   calculateTrainingValue();
+
+  //如果单个训练出现6个或者更多人头，则重新分配卡组
+  bool have6orMoreHeads = false;
+  for (int i = 0; i < 5; i++)
+  {
+    int c = 0;
+    for (int j = 0; j < 8; j++)
+      if (cardDistribution[i][j])
+        c++;
+    if (c >= 6)
+    {
+      have6orMoreHeads = true;
+      break;
+    }
+  }
+  if (have6orMoreHeads)
+    randomDistributeCards(rand);
+
 }
 
 void Game::calculateTrainingValue()
@@ -351,7 +375,7 @@ void Game::activateVenusWisdom()
       venusLevelBlue += 1;
     for (int i = 0; i < 6; i++)
     {
-      if (GameDatabase::AllSupportCards[cardId[i]].cardType < 5)
+      if (cardData[i]->cardType < 5)
         cardHint[i] = true;
     }
     //其他项目不在这里处理
@@ -439,7 +463,7 @@ std::array<int, 6> Game::calculateBlueVenusBonus(int trainType) const
   {
     if (cardDistribution[trainType][i])
     {
-      int cardType = GameDatabase::AllSupportCards[cardId[i]].cardType;
+      int cardType = cardData[i]->cardType;
       if (cardType < 5)//速耐力根智
       {
         cardCount++;
@@ -461,7 +485,7 @@ void Game::runRace(int basicFiveStatusBonus, int basicPtBonus)
   int cardRaceBonus = 0;
   for (int card = 0; card < 6; card++)
   {
-    cardRaceBonus += GameDatabase::AllSupportCards[cardId[card]].saiHou;
+    cardRaceBonus += cardData[card]->saiHou;
   }
   double raceMultiply = 1 + 0.01 * cardRaceBonus;
   if (venusAvailableWisdom == 1 && venusIsWisdomActive)//开红
@@ -474,7 +498,7 @@ void Game::runRace(int basicFiveStatusBonus, int basicPtBonus)
 void Game::handleVenusOutgoing(int chosenOutgoing)
 {
   venusCardOutgoingUsed[chosenOutgoing] = true;
-  assert(GameDatabase::AllSupportCards[cardId[0]].cardType == 5 && "神团卡不在第一个位置");
+  assert(cardData[0]->cardType == 5 && "神团卡不在第一个位置");
   if (chosenOutgoing == 0)//红
   {
     addVital(45);
@@ -531,7 +555,7 @@ void Game::handleVenusThreeChoicesEvent(std::mt19937_64& rand, int chosenColor)
   printEvents("出现女神三选一事件");
   int spiritType = chosenColor * 8 + rand() % 6 + 1;//碎片类型
   addSpirit(rand, spiritType);
-  assert(GameDatabase::AllSupportCards[cardId[0]].cardType == 5 && "神团卡不在第一个位置");
+  assert(cardData[0]->cardType == 5 && "神团卡不在第一个位置");
   addJiBan(0, 5);
   if (chosenColor == 0)
   {
@@ -565,7 +589,7 @@ void Game::calculateTrainingValueSingle(int trainType)
   {
     if (cardDistribution[trainType][card])//这个卡在这个训练
     {
-      effects.push_back(GameDatabase::AllSupportCards[cardId[card]].getCardEffect(*this, trainType, cardJiBan[card]));
+      effects.push_back(cardData[card]->getCardEffect(*this, trainType, cardJiBan[card], cardData[card]->effectFactor));
     }
   }
   //先算非女神的训练
@@ -611,7 +635,8 @@ void Game::calculateTrainingValueSingle(int trainType)
   //6.成长率
   double growthRates[6] = { 1,1,1,1,1,1 };
   for (int j = 0; j < 5; j++)
-    growthRates[j] = 1.0 + 0.01 * GameDatabase::AllUmas[umaId].fiveStatusBonus[j];
+    growthRates[j] = 1.0 + 0.01 * umaData->fiveStatusBonus[j];
+    //growthRates[j] = 1.0 + 0.01 * GameDatabase::AllUmas[umaId].fiveStatusBonus[j];
 
   //下层总数值
   int totalValue[6];
@@ -621,18 +646,13 @@ void Game::calculateTrainingValueSingle(int trainType)
     if (v > 100)v = 100;
     totalValue[j] = v;
   }
-
-
-    
+  
   //7.碎片
   for (int j = 0; j < 6; j++)
   {
     if (totalValue[j] > 0)//关联属性
       totalValue[j] += spiritBonus[j];
-  }
-
-    
-
+  } 
     
   //8.女神等级加成
   double venusMultiplying = 1.00 + 0.01 * (
@@ -714,9 +734,9 @@ bool Game::applyTraining(std::mt19937_64& rand, int chosenTrain, bool useVenus, 
   }
   else if (chosenTrain == 7)//比赛
   {
-    if (turn <= 12)
+    if (turn <= 12 || turn >= 72)
     {
-      printEvents("前13回合无法比赛");
+      printEvents("前13回合和最后6回合无法比赛");
       return false;
     }
     if (useVenus)
@@ -726,7 +746,7 @@ bool Game::applyTraining(std::mt19937_64& rand, int chosenTrain, bool useVenus, 
       else
         return false;
     }
-    runRace(GameConstants::NormalRaceFiveStatusBonus, GameConstants::NormalRacePtBonus);
+    runRace(2, 40);//粗略的近似
     addSpirit(rand, spiritDistribution[chosenTrain]);
   }
   else if (chosenTrain == 6)//外出
@@ -809,29 +829,40 @@ bool Game::applyTraining(std::mt19937_64& rand, int chosenTrain, bool useVenus, 
         addStatus(i, trainValue[chosenTrain][i]);
       skillPt += trainValue[chosenTrain][5];
       addVital(trainValue[chosenTrain][6]);
-      
-      //羁绊，红点
+
+      //羁绊
       for (int i = 0; i < 8; i++)
       {
         if (cardDistribution[chosenTrain][i])
         {
-          assert(GameDatabase::AllSupportCards[cardId[0]].cardType == 5 && "神团卡不在第一个位置");
+          assert(cardData[0]->cardType == 5 && "神团卡不在第一个位置");
           if (i == 0) //神团点一次+4羁绊
             addJiBan(i, 4);
           else
             addJiBan(i, 7);
           if (i == 6)skillPt += 2;//理事长
           if (i >= 6)continue;//理事长和记者
-          if (cardHint[i])//红点
-          {
-            addJiBan(i, 5);
-            auto& hintBonus = GameDatabase::AllSupportCards[cardId[i]].hintBonus;
-            for (int i = 0; i < 5; i++)
-              addStatus(i, hintBonus[i]);
-            skillPt += hintBonus[5];
-          }
         }
       }
+
+      //红点(hint)
+      vector<int> hintCards;
+      for (int i = 0; i < 6; i++)
+      {
+        if (cardDistribution[chosenTrain][i] && cardHint[i])
+        {
+          hintCards.push_back(i);
+        }
+      }
+
+      auto applyHint= [this](int i)  {
+        addJiBan(i, 5);
+        auto& hintBonus = cardData[i]->hintBonus;
+        for (int i = 0; i < 5; i++)
+          addStatus(i, hintBonus[i]);
+        skillPt += hintBonus[5];
+      };
+
       
       //开蓝
       if (venusIsWisdomActive && venusAvailableWisdom == 2)
@@ -840,13 +871,24 @@ bool Game::applyTraining(std::mt19937_64& rand, int chosenTrain, bool useVenus, 
         for (int i = 0; i < 5; i++)
           addStatus(i, blueVenusBonus[i]);
         skillPt += blueVenusBonus[5];
+
+        for (auto i = 0; i < hintCards.size(); i++)
+          applyHint(hintCards[i]);
+      }
+      else//一次只有一张卡的红点可以生效，除非开蓝
+      {
+        if (hintCards.size() != 0)
+        {
+          int hintCard = hintCards[rand() % hintCards.size()];
+          applyHint(hintCard);
+        }
       }
 
       //加碎片
       addSpirit(rand, spiritDistribution[chosenTrain]);
 
       //点击了女神所在的训练
-      assert(GameDatabase::AllSupportCards[cardId[0]].cardType == 5 && "神团卡不在第一个位置");
+      assert(cardData[0]->cardType == 5 && "神团卡不在第一个位置");
       if (cardDistribution[chosenTrain][0])
       {
         if (!venusCardFirstClick)//第一次点
@@ -972,7 +1014,7 @@ void Game::checkEventAfterTrain(std::mt19937_64& rand)
       venusCardIsQingRe = true;
       addAllStatus(6);
       skillPt += 12;
-      assert(GameDatabase::AllSupportCards[cardId[0]].cardType == 5 && "神团卡不在第一个位置");
+      assert(cardData[0]->cardType == 5 && "神团卡不在第一个位置");
       addJiBan(0, 5);
     }
   }
@@ -1020,7 +1062,7 @@ void Game::checkEventAfterTrain(std::mt19937_64& rand)
       addVital(19);
       skillPt += 36;
       skillPt += 50;//技能等效
-      assert(GameDatabase::AllSupportCards[cardId[0]].cardType == 5 && "神团卡不在第一个位置");
+      assert(cardData[0]->cardType == 5 && "神团卡不在第一个位置");
       addJiBan(0, 5);
     }
 
@@ -1090,6 +1132,11 @@ void Game::checkEventAfterTrain(std::mt19937_64& rand)
       printEvents("抽奖：你抽中了厕纸");
     }
   }
+  else if (turn == 49)//升固有
+  {
+    skillPt += 170 / GameConstants::ScorePtRate;//固有直接等价成pt
+    printEvents("固有等级+1");
+  }
   else if (turn == 53)//第三年继承&理事长升固有
   {
     for (int i = 0; i < 5; i++)
@@ -1109,6 +1156,11 @@ void Game::checkEventAfterTrain(std::mt19937_64& rand)
       addVital(-5);
       skillPt += 25;
     }
+  }
+  else if (turn == 70)//升固有
+  {
+    skillPt += 170 / GameConstants::ScorePtRate;//固有直接等价成pt
+    printEvents("固有等级+1");
   }
   else if (turn == 71)//第三年年底
   {
@@ -1191,12 +1243,15 @@ void Game::checkEventAfterTrain(std::mt19937_64& rand)
     int card = rand() % 6;
     addJiBan(card, 5);
 
-    printEvents("模拟随机事件：" + GameDatabase::AllSupportCardNames[cardId[card]] + " 的羁绊+5");
+    printEvents("模拟随机事件：" + GameDatabase::AllCards[cardId[card]].cardName + " 的羁绊+5");
   }
 
   //模拟乱七八糟加属性事件
-  addAllStatus(1);
-  printEvents("模拟随机事件：全属性+1");
+  if (turn < 72)
+  {
+    addAllStatus(1);
+    printEvents("模拟随机事件：全属性+1");
+  }
 
   //加体力
   if (randBool(rand, 0.1))
@@ -1206,14 +1261,14 @@ void Game::checkEventAfterTrain(std::mt19937_64& rand)
   }
 
   //加心情
-  if (randBool(rand, 0.03))
+  if (randBool(rand, 0.02))
   {
     addMotivation(1);
     printEvents("模拟随机事件：心情+1");
   }
 
   //掉心情
-  if (randBool(rand, 0.03))
+  if (randBool(rand, 0.04))
   {
     addMotivation(-1);
     printEvents("模拟随机事件：\033[0m\033[33m心情-1\033[0m\033[32m");
@@ -1236,14 +1291,14 @@ void Game::checkEventAfterTrain(std::mt19937_64& rand)
   turn++;
   if (turn < TOTAL_TURN)
   {
-    isRacing = GameDatabase::AllUmas[umaId].races[turn];
+    isRacing = umaData->races[turn] & TURN_RACE;
+    //isRacing = GameDatabase::AllUmas[umaId].races[turn] & TURN_RACE;
   }
   else
   {
     printEvents("育成结束!");
     printEvents("你的得分是：" + to_string(finalScore()));
   }
-
 
 }
 

@@ -10,29 +10,29 @@ using json = nlohmann::json;
 // 为True时会把所有ID的最高位改为满破（马娘5xxx，卡4xxx）
 static bool maskUmaId = true;
 
-int hack_umaId(int umaId)
+int mask_umaId(int umaId)
 {
     return umaId % 1000000;
 }
 
-int hack_scId(int scId)
+int mask_scId(int scId)
 {
-    return scId % 100000 + 400000;
+    return scId % 100000;
 }
 
 bool Game::loadGameFromJson(std::string jsonStr)
 {
   try
   {
-    json j = json::parse(jsonStr);
-    //cout << jsonStr << endl;
+    json j = json::parse(jsonStr, nullptr, true, true);
+
     umaId = j["umaId"];
     if (maskUmaId)
-        umaId = hack_umaId(umaId);
-    if (!GameDatabase::AllUmaGameIdToSimulatorId.count(umaId))
+        umaId = mask_umaId(umaId);
+    if (!GameDatabase::AllUmas.count(umaId))
       throw string("未知马娘");
-    umaId = GameDatabase::AllUmaGameIdToSimulatorId.at(umaId);
-
+    umaData = &GameDatabase::AllUmas[umaId];
+    
     turn = j["turn"];
     if (turn >= TOTAL_TURN && turn < 0)
       throw string("回合数不正确");
@@ -52,11 +52,24 @@ bool Game::loadGameFromJson(std::string jsonStr)
     for (int i = 0; i < 6; i++)
     {
       int c = j["cardId"][i];
-      if (maskUmaId)
-          c = hack_scId(c);
-      if (!GameDatabase::AllSupportCardGameIdToSimulatorId.count(c))
-        throw string("未知支援卡");
-      cardId[i] = GameDatabase::AllSupportCardGameIdToSimulatorId.at(c);
+      int type = c / 100000;
+      c = c % 100000;
+      c = c * 10;
+
+      if (!GameDatabase::AllCards.count(c+type))
+          throw string("未知支援卡");
+
+      while (GameDatabase::AllCards[c + type].filled == false && type < 4)
+          ++type;
+
+      if (type == 5) {
+          throw string("没有填写对应的突破数据以及满破数据");
+      }
+      c += type;
+
+      cardId[i] = c;
+      cardData[i] = &GameDatabase::AllCards[c];
+
     }
 
     for (int i = 0; i < 8; i++)
@@ -112,15 +125,14 @@ bool Game::loadGameFromJson(std::string jsonStr)
     for (int i = 0; i < 8; i++)
       spiritDistribution[i] = j["spiritDistribution"][i];
 
-    // std::cout << "Others load finished\n";
 
     // 5号是友人或团队
-    if ( GameDatabase::AllSupportCards[cardId[0]].cardType != 5)//1号位不是神团，交换卡组位置，把神团换到1号位
+    if ( GameDatabase::AllCards[cardId[0]].cardType != 5)//1号位不是神团，交换卡组位置，把神团换到1号位
     {
       int s = -1;//神团原位置
       for (int i = 1; i < 6; i++)
       {
-        if (GameDatabase::AllSupportCards[cardId[i]].cardType == 5)
+        if (GameDatabase::AllCards[cardId[i]].cardType == 5)
         {
           s = i;
           break;
@@ -130,6 +142,7 @@ bool Game::loadGameFromJson(std::string jsonStr)
         throw string("没带神团");
 
       std::swap(cardId[s], cardId[0]);
+      std::swap(cardData[s], cardData[0]);
       std::swap(cardJiBan[s], cardJiBan[0]);
 
       for (int i = 0; i < 5; i++)
@@ -142,17 +155,29 @@ bool Game::loadGameFromJson(std::string jsonStr)
 
     initRandomGenerators();
     calculateVenusSpiritsBonus();
-    calculateTrainingValue();
+
+    for (int i = 0; i < 5; i++)
+      for (int k = 0; k < 7; k++)
+      {
+        trainValue[i][k] = j["trainValue"][i][k];
+      }
+
+    for (int i = 0; i < 5; i++)
+      failRate[i] = j["failRate"][i];
+
+
+    //calculateTrainingValue();
 
   }
   catch (string e)
   {
-    cout << "读取游戏信息json出错：" << e << endl;
+    cout << "读取游戏信息json出错：" << e << endl << "-- json --" << endl << jsonStr << endl;
     return false;
   }
   catch (std::exception& e)
   {
-    cout << "读取游戏信息json出错：未知错误" << e.what() << endl;
+      cout << "读取游戏信息json出错：未知错误" << endl << e.what()
+          << endl << "-- json --" << endl << jsonStr << endl;
     return false;
   }
   catch (...)
